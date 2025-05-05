@@ -14,9 +14,11 @@ class Net1(nn.Module):
     def __init__(self):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Conv2d(in_channels=6, out_channels=12, kernel_size=5, padding=2),
+            nn.Conv2d(in_channels=6, out_channels=24, kernel_size=5, padding=2),
             nn.ReLU(),
-            nn.Conv2d(in_channels=12, out_channels=3, kernel_size=5, padding=2),
+            nn.Conv2d(in_channels=24, out_channels=12, kernel_size=7, padding=3),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=12, out_channels=3, kernel_size=9, padding=4),
         )
 
     def forward(self, x):

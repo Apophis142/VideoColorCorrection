@@ -72,8 +72,7 @@ def create_frames_pair_dataset(low_light_path, processed_path, frame_sequence_le
         cv2.imread,
         torch.tensor,
         lambda t: t.transpose(2, 0),
-        transforms.Resize(resize),
-        lambda t: (t / 255).to(torch.float16)
+        lambda t: (t / 255)
     ])
     x_dataset = []
     y_dataset = []

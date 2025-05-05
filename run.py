@@ -30,16 +30,16 @@ x, y = create_global_pair_dataset(
 
 dataset = TensorDataset(torch.stack(x), torch.stack(y))
 train_dataset, test_dataset = random_split(dataset, [.8, .2])
+print(test_dataset[0], test_dataset[1], test_dataset[2])
 data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+test_data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False)
 net = Net1()
 if torch.cuda.is_available():
     net = net.cuda()
-net = net.to(torch.float16)
 hist = train_nn(
     net,
     data_loader,
-    test_dataset[0],
-    test_dataset[1],
+    test_data_loader,
     args.learning_rate,
     args.num_epochs,
     epoch_frequency_save=args.epoch_save_frequency

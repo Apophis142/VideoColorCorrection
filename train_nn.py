@@ -8,8 +8,7 @@ from matplotlib import pyplot as plt
 def train_nn(
         net: nn.Module,
         train_loader: torch.utils.data.DataLoader,
-        x_eval: torch.tensor,
-        y_eval: torch.tensor,
+        test_loader: torch.utils.data.DataLoader,
         learning_rate: float,
         num_epochs: int,
         loss_function: nn.Module=None,
@@ -47,12 +46,14 @@ def train_nn(
                 pbar.update()
             loss_hist.append(running_loss / len(train_loader))
             net.eval()
+            eval_loss = 0
             with torch.no_grad():
-                x_eval, y_eval = torch.tensor(x_eval, dtype=torch.float32), torch.tensor(y_eval)
-                if torch.cuda.is_available():
-                    x_eval = x_eval.cuda()
-                    y_eval = y_eval.cuda()
-                eval_hist.append(loss_function(net(x_eval), y_eval).item())
+                for inputs, targets in test_loader:
+                    if torch.cuda.is_available():
+                        x_eval = inputs.cuda()
+                        y_eval = targets.cuda()
+                    eval_loss += loss_function(net(x_eval), y_eval).item()
+                eval_hist.append(eval_loss / len(test_loader))
 
             if epoch % epoch_frequency_save == 0 and epoch:
                 net.save("C:\\Users\\User\\PycharmProjects\\vkr1\\training\\weights\\", f"{net.name()}_epoch_{epoch}")
