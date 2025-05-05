@@ -3,6 +3,13 @@ from torch import nn, optim
 from tqdm import tqdm
 import pickle
 from matplotlib import pyplot as plt
+import os
+
+
+if not os.path.exists("models/training"):
+    os.makedirs("models/training")
+if not os.path.exists("models/pair_frame"):
+    os.makedirs("models/pair_frame")
 
 
 def train_nn(

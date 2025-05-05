@@ -67,12 +67,13 @@ def create_frames_sequence_dataset(low_light_path, processed_path, frame_sequenc
 
 def create_frames_pair_dataset(low_light_path, processed_path, frame_sequence_length, resize=None):
     if resize is None:
-        resize = [600, 400]
+        resize = [960, 512]
     transform = transforms.Compose([
         cv2.imread,
         torch.tensor,
         lambda t: t.transpose(2, 0),
-        lambda t: (t / 255)
+        transforms.Resize(resize),
+        lambda t: (t / 255).to(torch.float16)
     ])
     x_dataset = []
     y_dataset = []
