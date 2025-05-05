@@ -35,6 +35,7 @@ test_data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle
 net = Net1()
 if torch.cuda.is_available():
     net = net.cuda()
+net = net.to(torch.float16)
 hist = train_nn(
     net,
     data_loader,
