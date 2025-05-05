@@ -40,3 +40,12 @@ class FramePairModel(object):
     def __call__(self, x):
         """x: sequence of frames"""
         pass
+
+
+if __name__ == "__main__":
+    net = Net1()
+    net.eval()
+    x = torch.rand([960, 512, 6]).transpose(0, 2)
+    print(x.element_size() * x.nelement() / 1024**2)
+
+    print(net(x), net(x).shape)

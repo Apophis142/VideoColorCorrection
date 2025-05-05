@@ -1,4 +1,6 @@
 import argparse
+
+import torch
 from torch.utils.data import TensorDataset, DataLoader, random_split
 
 from data.base_dataset import create_global_pair_dataset
@@ -15,16 +17,18 @@ parser.add_argument("--num_epochs", default=100, type=int)
 parser.add_argument("--epoch_save_frequency", default=10, type=int)
 parser.add_argument("--learning_rate", default=.001, type=float)
 parser.add_argument("--model", default="pairframe", type=str)
+parser.add_argument("--resize_shape", nargs=2, default=[600, 400], type=int)
 args = parser.parse_args()
 
 print(args)
 x, y = create_global_pair_dataset(
     args.low_light_frames_path,
     args.processed_low_light_frames_path,
-    args.frames_sequence_length
+    args.frames_sequence_length,
+    args.resize_shape
 )
 
-dataset = TensorDataset(x, y)
+dataset = TensorDataset(torch.stack(x), torch.stack(y))
 train_dataset, test_dataset = random_split(dataset, [.8, .2])
 data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 net = Net1()

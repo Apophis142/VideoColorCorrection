@@ -1,6 +1,7 @@
 import os
-import cv2
 import torch
+import cv2
+from torchvision import transforms
 
 
 class FramesSequence(object):
@@ -29,7 +30,9 @@ class FramesPair(object):
         return torch.cat(self.frames, dim=2)
 
 
-def create_frames_sequence_dataset(low_light_path, processed_path, frame_sequence_length):
+def create_frames_sequence_dataset(low_light_path, processed_path, frame_sequence_length, transform=None):
+    if transform is None:
+        transform = transforms.Compose([torch.tensor])
     x_dataset = []
     y_dataset = []
     skip = 0
@@ -42,24 +45,24 @@ def create_frames_sequence_dataset(low_light_path, processed_path, frame_sequenc
         first_frame = int(x_path.replace(".jpg", ""))
         if all(f"{j}.jpg" in xs and f"{j}.jpg" in ys for j in range(first_frame, first_frame + frame_sequence_length)):
             x_dataset += [
-                FramesSequence(
-                    cv2.imread(processed_path + f"{first_frame + frame_sequence_length // 2}.jpg"),
-                    [cv2.imread(low_light_path + f"{j}.jpg")
-                     for j in range(first_frame, first_frame + frame_sequence_length)]
-                ).to_tensor() / 255
+                torch.cat(
+                    [transform(cv2.imread(processed_path + f"{first_frame + frame_sequence_length // 2}.jpg")),
+                    *[transform(cv2.imread(low_light_path + f"{j}.jpg"))
+                     for j in range(first_frame, first_frame + frame_sequence_length)]], dim=2
+                ).transpose(2, 0) / 255
             ]
             y_dataset += [
-                torch.cat([cv2.imread(processed_path + f"{j}.jpg")
-                for j in range(first_frame, first_frame + frame_sequence_length)], dim=2) / 255
+                torch.cat([transform(cv2.imread(processed_path + f"{j}.jpg"))
+                for j in range(first_frame, first_frame + frame_sequence_length)], dim=2).transpose(2, 0) / 255
             ]
-            skip += frame_sequence_length
-        else:
-            continue
+            skip = frame_sequence_length
 
     return x_dataset, y_dataset
 
 
-def create_frames_pair_dataset(low_light_path, processed_path, frame_sequence_length):
+def create_frames_pair_dataset(low_light_path, processed_path, frame_sequence_length, transform=None):
+    if transform is None:
+        transform = transforms.Compose([torch.tensor])
     x_dataset = []
     y_dataset = []
     skip = 0
@@ -71,26 +74,34 @@ def create_frames_pair_dataset(low_light_path, processed_path, frame_sequence_le
             continue
         center = int(x_path.replace(".jpg", ""))
         if all(f"{j}.jpg" in xs and f"{j}.jpg" in ys for j in range(center - frame_sequence_length // 2,center + frame_sequence_length // 2 + 1)):
-            center_y_frame = torch.tensor(cv2.imread(processed_path + x_path))
+            center_y_frame = transform(cv2.imread(processed_path + x_path))
             x_dataset += [
-                FramesPair(center_y_frame, torch.tensor(cv2.imread(low_light_path + f"{j}.jpg"))).to_tensor() / 255
+                torch.cat((center_y_frame, transform(cv2.imread(low_light_path + f"{j}.jpg"))), dim=2).transpose(2, 0) / 255
                 for j in range(center - frame_sequence_length // 2, center + frame_sequence_length // 2 + 1)
             ]
             y_dataset += [
-                torch.tensor(cv2.imread(processed_path + f"{j}.jpg")) / 255
+                torch.tensor(transform(cv2.imread(processed_path + f"{j}.jpg"))).transpose(2, 0) / 255
                 for j in range(center - frame_sequence_length // 2, center + frame_sequence_length // 2 + 1)
             ]
-        else:
-            continue
+            skip = frame_sequence_length
 
     return x_dataset, y_dataset
 
-def create_global_pair_dataset(low_light_path, processed_path, frame_sequence_length):
+def create_global_pair_dataset(low_light_path, processed_path, frame_sequence_length, transform_size: list[int]=None):
     x_dataset = []
     y_dataset = []
 
+    if transform_size is None:
+        transform = transforms.Compose([torch.tensor])
+    else:
+        transform = transforms.Compose([torch.tensor, transforms.Resize(transform_size)])
     for path_x, path_y in zip(os.listdir(low_light_path), os.listdir(processed_path)):
-        x, y = create_frames_pair_dataset(f"{low_light_path}/{path_x}/", f"{processed_path}/{path_y}/", frame_sequence_length)
+        x, y = create_frames_pair_dataset(
+            f"{low_light_path}/{path_x}/",
+            f"{processed_path}/{path_y}/",
+            frame_sequence_length,
+            transform=transform
+        )
         x_dataset += x
         y_dataset += y
 

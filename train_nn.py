@@ -57,6 +57,7 @@ def train_nn(
                 net.save("C:\\Users\\User\\PycharmProjects\\vkr1\\weights\\", f"{net.name()}_epoch_{epoch}")
                 with open(f"{net.name()}_loss_history_epoch_{epoch}", 'wb+') as f:
                     pickle.dump((tuple(loss_hist), tuple(eval_hist)), f)
+            torch.cuda.empty_cache()
         pbar.close()
 
         net.save("C:\\Users\\User\\PycharmProjects\\vkr1\\weights\\", f"{net.name()}_trained")
