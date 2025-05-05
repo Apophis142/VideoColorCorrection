@@ -75,10 +75,10 @@ def train_nn(
         plt.plot(loss_hist)
         plt.xlabel("epoch")
         plt.title("training loss")
-        plt.savefig(filename=f"models/pair_frame/{net.name()}training_loss.png")
+        plt.savefig(f"models/pair_frame/{net.name()}training_loss.png")
         plt.plot(eval_hist)
         plt.xlabel("epoch")
         plt.title("validation loss")
-        plt.savefig(filename=f"models/pair_frame/{net.name()}validation_loss.png")
+        plt.savefig(f"models/pair_frame/{net.name()}validation_loss.png")
 
     return loss_hist, eval_hist
