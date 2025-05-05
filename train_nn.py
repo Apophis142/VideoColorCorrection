@@ -2,6 +2,7 @@ import torch
 from torch import nn, optim
 from tqdm import tqdm
 import pickle
+from matplotlib import pyplot as plt
 
 
 def train_nn(
@@ -54,14 +55,30 @@ def train_nn(
                 eval_hist.append(loss_function(net(x_eval), y_eval).item())
 
             if epoch % epoch_frequency_save == 0 and epoch:
-                net.save("C:\\Users\\User\\PycharmProjects\\vkr1\\weights\\", f"{net.name()}_epoch_{epoch}")
-                with open(f"{net.name()}_loss_history_epoch_{epoch}", 'wb+') as f:
+                net.save("C:\\Users\\User\\PycharmProjects\\vkr1\\training\\weights\\", f"{net.name()}_epoch_{epoch}")
+                with open(f"models\\training\\{net.name()}_loss_history_epoch_{epoch}", 'wb+') as f:
                     pickle.dump((tuple(loss_hist), tuple(eval_hist)), f)
+                plt.plot(loss_hist)
+                plt.xlabel("epoch")
+                plt.title("training loss")
+                plt.savefig(filename=f"models/training/{net.name()}training_loss.png")
+                plt.plot(eval_hist)
+                plt.xlabel("epoch")
+                plt.title("validation loss")
+                plt.savefig(filename=f"models/pair_frame/{net.name()}validation_loss.png")
             torch.cuda.empty_cache()
         pbar.close()
 
         net.save("C:\\Users\\User\\PycharmProjects\\vkr1\\weights\\", f"{net.name()}_trained")
         with open(f"{net.name()}_loss_history_epoch_{epoch}", 'wb+') as f:
             pickle.dump((tuple(loss_hist), tuple(eval_hist)), f)
+        plt.plot(loss_hist)
+        plt.xlabel("epoch")
+        plt.title("training loss")
+        plt.savefig(filename=f"models/pair_frame/{net.name()}training_loss.png")
+        plt.plot(eval_hist)
+        plt.xlabel("epoch")
+        plt.title("validation loss")
+        plt.savefig(filename=f"models/pair_frame/{net.name()}validation_loss.png")
 
     return loss_hist, eval_hist

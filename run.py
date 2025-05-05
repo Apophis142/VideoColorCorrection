@@ -32,6 +32,9 @@ dataset = TensorDataset(torch.stack(x), torch.stack(y))
 train_dataset, test_dataset = random_split(dataset, [.8, .2])
 data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 net = Net1()
+if torch.cuda.is_available():
+    net = net.cuda()
+net = net.to(torch.float16)
 hist = train_nn(
     net,
     data_loader,
