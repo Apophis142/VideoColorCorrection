@@ -1,3 +1,7 @@
-/.venv/*
-/data/frames/*
-/data/video/*
+/.venv/**
+/data/frames/**
+/data/video/**
+*.zip
+*.pkl
+*.png
+*.xml

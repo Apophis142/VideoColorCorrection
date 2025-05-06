@@ -18,6 +18,7 @@ def train_nn(
         test_loader: torch.utils.data.DataLoader,
         learning_rate: float,
         num_epochs: int,
+        filename_to_save: str,
         loss_function: nn.Module=None,
         epoch_frequency_save: int=10,
 ):
@@ -63,30 +64,30 @@ def train_nn(
                 eval_hist.append(eval_loss / len(test_loader))
 
             if epoch % epoch_frequency_save == 0 and epoch:
-                net.save("C:\\Users\\User\\PycharmProjects\\vkr1\\training\\weights\\", f"{net.name()}_epoch_{epoch}")
-                with open(f"models\\training\\{net.name()}_loss_history_epoch_{epoch}.pkl", 'wb+') as f:
+                net.save("weights/training/", f"{net.name()}_epoch_{epoch}")
+                with open(f"models/training/{filename_to_save}_loss_history_epoch.pkl", 'wb+') as f:
                     pickle.dump((tuple(loss_hist), tuple(eval_hist)), f)
                 plt.plot(loss_hist)
                 plt.xlabel("epoch")
                 plt.title("training loss")
-                plt.savefig(fname=f"models/training/{net.name()}training_loss.png")
+                plt.savefig(fname=f"models/training/{filename_to_save}_training_loss.png")
                 plt.plot(eval_hist)
                 plt.xlabel("epoch")
                 plt.title("validation loss")
-                plt.savefig(fname=f"models/pair_frame/{net.name()}validation_loss.png")
+                plt.savefig(fname=f"models/pair_frame/{filename_to_save}_validation_loss.png")
             torch.cuda.empty_cache()
         pbar.close()
 
-        net.save("C:\\Users\\User\\PycharmProjects\\vkr1\\weights\\", f"{net.name()}_trained")
-        with open(f"{net.name()}_loss_history_epoch_{epoch}.pkl", 'wb+') as f:
+        net.save("weights/", f"{filename_to_save}_trained")
+        with open(f"{filename_to_save}_loss_history_epoch_{epoch}.pkl", 'wb+') as f:
             pickle.dump((tuple(loss_hist), tuple(eval_hist)), f)
         plt.plot(loss_hist)
         plt.xlabel("epoch")
         plt.title("training loss")
-        plt.savefig(fname=f"models/pair_frame/{net.name()}training_loss.png")
+        plt.savefig(fname=f"models/pair_frame/{filename_to_save}training_loss.png")
         plt.plot(eval_hist)
         plt.xlabel("epoch")
         plt.title("validation loss")
-        plt.savefig(fname=f"models/pair_frame/{net.name()}validation_loss.png")
+        plt.savefig(fname=f"models/pair_frame/{filename_to_save}validation_loss.png")
 
     return loss_hist, eval_hist

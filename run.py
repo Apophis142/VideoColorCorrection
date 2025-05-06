@@ -14,7 +14,8 @@ parser.add_argument("frames_sequence_length", type=int)
 parser.add_argument("--normal_light_frames-path", default="", type=str)
 parser.add_argument("-batch", "--batch_size", default=8, type=int)
 parser.add_argument("-epoch", "--num_epochs", default=100, type=int)
-parser.add_argument("-save", "--epoch_save_frequency", default=10, type=int)
+parser.add_argument("-sf", "--epoch_save_frequency", default=10, type=int)
+parser.add_argument("-save", "--filename_to_save", required=True, type=str)
 parser.add_argument("-lr", "--learning_rate", default=.001, type=float)
 parser.add_argument("-m", "--model", default="pairframe", type=str)
 parser.add_argument("-resize", "--resize_shape", nargs=2, default=[600, 400], type=int)
@@ -51,5 +52,6 @@ hist = train_nn(
     test_data_loader,
     args.learning_rate,
     args.num_epochs,
+    filename_to_save=args.filename_to_save,
     epoch_frequency_save=args.epoch_save_frequency
 )
