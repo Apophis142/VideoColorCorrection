@@ -65,15 +65,23 @@ def create_frames_sequence_dataset(low_light_path, processed_path, frame_sequenc
     return x_dataset, y_dataset
 
 
-def create_frames_pair_dataset(low_light_path, processed_path, frame_sequence_length, resize=None):
+def create_frames_pair_dataset(
+        low_light_path,
+        processed_path,
+        frame_sequence_length,
+        resize=None,
+        dtype: torch.dtype=None
+):
     if resize is None:
         resize = [960, 512]
+    if dtype is None:
+        dtype = "float16"
     transform = transforms.Compose([
         cv2.imread,
         torch.tensor,
         lambda t: t.transpose(2, 0),
         transforms.Resize(resize),
-        lambda t: (t / 255).to(torch.float16)
+        lambda t: (t / 255).to(dtype)
     ])
     x_dataset = []
     y_dataset = []
@@ -99,9 +107,18 @@ def create_frames_pair_dataset(low_light_path, processed_path, frame_sequence_le
 
     return x_dataset, y_dataset
 
-def create_global_pair_dataset(low_light_path, processed_path, frame_sequence_length, transform_size: list[int]=None):
+def create_global_pair_dataset(
+        low_light_path,
+        processed_path,
+        frame_sequence_length,
+        transform_size: list[int]=None,
+        dtype: torch.dtype=None
+):
     x_dataset = []
     y_dataset = []
+
+    if dtype is None:
+        dtype = torch.float16
 
     total_memory = 0
     for path_x, path_y in zip(os.listdir(low_light_path), os.listdir(processed_path)):
@@ -109,12 +126,13 @@ def create_global_pair_dataset(low_light_path, processed_path, frame_sequence_le
             f"{low_light_path}/{path_x}/",
             f"{processed_path}/{path_y}/",
             frame_sequence_length,
-            resize=transform_size
+            resize=transform_size,
+            dtype=dtype,
         )
         x_dataset += x
         y_dataset += y
         print("Processed folder %s: %d frame pairs. Used memory: %.2f Mb" %
-              (path_x, len(x), (memory := x[0].element_size() + y[0].element_size()) * x[0].nelement() * len(x) / 1024**2))
+              (path_x, len(x), memory := ((x[0].element_size() + y[0].element_size()) * x[0].nelement() * len(x)) / 1024**2))
         total_memory += memory
     print("Processed %d folders: %d frame pairs. Total memory: %.2f Mb" %
           (len(os.listdir(low_light_path)), len(x_dataset), total_memory))
