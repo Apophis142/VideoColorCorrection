@@ -114,7 +114,7 @@ def create_global_pair_dataset(low_light_path, processed_path, frame_sequence_le
         x_dataset += x
         y_dataset += y
         print("Processed folder %s: %d frame pairs. Used memory: %.2f Mb" %
-              (path_x, len(x), (memory := x[0].element_size() + y[0].element_size()) * x[0].nelemnt() * len(x) / 1024**2))
+              (path_x, len(x), (memory := x[0].element_size() + y[0].element_size()) * x[0].nelement() * len(x) / 1024**2))
         total_memory += memory
     print("Processed %d folders: %d frame pairs. Total memory: %.2f Mb" %
           (len(os.listdir(low_light_path)), len(x_dataset), total_memory))
