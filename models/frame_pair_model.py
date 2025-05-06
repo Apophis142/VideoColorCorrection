@@ -19,6 +19,7 @@ class Net1(nn.Module):
             nn.Conv2d(in_channels=24, out_channels=12, kernel_size=7, padding=3),
             nn.ReLU(),
             nn.Conv2d(in_channels=12, out_channels=3, kernel_size=9, padding=4),
+            nn.Sigmoid()
         )
 
     def forward(self, x):

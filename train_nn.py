@@ -25,7 +25,7 @@ def train_nn(
     loss_hist = []
     eval_hist = []
     if loss_function is None:
-        loss_function = nn.MSELoss()
+        loss_function = nn.L1Loss()
 
     with tqdm(total=len(train_loader) * num_epochs, position=0, leave=True) as pbar:
 
@@ -48,7 +48,7 @@ def train_nn(
                 running_loss += loss.item()
                 n += 1
 
-                if batch_num % 100 == 0:
+                if batch_num % 10 == 0:
                     pbar.set_description("Epoch: %d, Batch: %d, Loss: %.2f" % (epoch, batch_num, running_loss / n))
                 pbar.update()
             loss_hist.append(running_loss / len(train_loader))
@@ -64,7 +64,7 @@ def train_nn(
 
             if epoch % epoch_frequency_save == 0 and epoch:
                 net.save("C:\\Users\\User\\PycharmProjects\\vkr1\\training\\weights\\", f"{net.name()}_epoch_{epoch}")
-                with open(f"models\\training\\{net.name()}_loss_history_epoch_{epoch}", 'wb+') as f:
+                with open(f"models\\training\\{net.name()}_loss_history_epoch_{epoch}.pkl", 'wb+') as f:
                     pickle.dump((tuple(loss_hist), tuple(eval_hist)), f)
                 plt.plot(loss_hist)
                 plt.xlabel("epoch")
@@ -78,7 +78,7 @@ def train_nn(
         pbar.close()
 
         net.save("C:\\Users\\User\\PycharmProjects\\vkr1\\weights\\", f"{net.name()}_trained")
-        with open(f"{net.name()}_loss_history_epoch_{epoch}", 'wb+') as f:
+        with open(f"{net.name()}_loss_history_epoch_{epoch}.pkl", 'wb+') as f:
             pickle.dump((tuple(loss_hist), tuple(eval_hist)), f)
         plt.plot(loss_hist)
         plt.xlabel("epoch")
