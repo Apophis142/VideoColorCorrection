@@ -8,6 +8,7 @@ from train_nn import train_nn
 from models.frame_pair_model import Net1
 
 parser = argparse.ArgumentParser(description="Training model to color correcting videos")
+parser.add_argument("-m", "--model", default="pairframe", type=str)
 parser.add_argument("low_light_frames_path", type=str)
 parser.add_argument("processed_low_light_frames_path", type=str)
 parser.add_argument("frames_sequence_length", type=int)
@@ -17,7 +18,7 @@ parser.add_argument("-epoch", "--num_epochs", default=100, type=int)
 parser.add_argument("-sf", "--epoch_save_frequency", default=10, type=int)
 parser.add_argument("-save", "--filename_to_save", required=True, type=str)
 parser.add_argument("-lr", "--learning_rate", default=.001, type=float)
-parser.add_argument("-m", "--model", default="pairframe", type=str)
+parser.add_argument("-loss", "--loss_function", default="mae", type=str)
 parser.add_argument("-resize", "--resize_shape", nargs=2, default=[600, 400], type=int)
 parser.add_argument("-dtype", "--tensor_dtype", default="float16", type=str)
 args = parser.parse_args()
@@ -29,6 +30,10 @@ dtypes = {
     "double": torch.double,
     "float": torch.float,
     "half": torch.float16,
+}
+loss_functions = {
+    "mse": torch.nn.MSELoss(),
+    "mae": torch.nn.L1Loss(),
 }
 x, y = create_global_pair_dataset(
     args.low_light_frames_path,
@@ -52,6 +57,7 @@ hist = train_nn(
     test_data_loader,
     args.learning_rate,
     args.num_epochs,
+    loss_function=loss_functions[args.loss_function],
     filename_to_save=args.filename_to_save,
     epoch_frequency_save=args.epoch_save_frequency
 )
