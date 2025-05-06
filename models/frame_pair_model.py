@@ -28,7 +28,7 @@ class Net1(nn.Module):
     def save(self, path, filename):
         if not os.path.exists(path):
             os.makedirs(path)
-        torch.save(self.state_dict(), path + filename)
+        torch.save(self.state_dict(), path + filename + ".pth" if not filename.endswith(".pth") else "")
 
     def load(self, path):
         self.load_state_dict(torch.load(path, weights_only=True))
