@@ -38,7 +38,7 @@ x, y = create_global_pair_dataset(
 )
 
 dataset = TensorDataset(torch.stack(x), torch.stack(y))
-train_dataset, test_dataset = random_split(dataset, [(train_length := len(dataset) * .8), len(dataset) - train_length])
+train_dataset, test_dataset = random_split(dataset, [(train_length := int(len(dataset) * .8)), len(dataset) - train_length])
 data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 test_data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False)
 net = Net1()
