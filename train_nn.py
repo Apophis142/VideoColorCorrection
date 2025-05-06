@@ -50,7 +50,8 @@ def train_nn(
                 n += 1
 
                 if batch_num % 10 == 0:
-                    pbar.set_description("Epoch: %d, Batch: %d, Loss: %.2f" % (epoch, batch_num, running_loss / n))
+                    pbar.set_description("Epoch: %d, Batch: %d, Loss: train %.4f, eval %.4f" %
+                                         (epoch, batch_num, running_loss / n, eval_hist[-1] if eval_hist else torch.nan))
                 pbar.update()
             loss_hist.append(running_loss / len(train_loader))
             net.eval()
@@ -67,27 +68,18 @@ def train_nn(
                 net.save("weights/training/", f"{net.name()}_epoch_{epoch}")
                 with open(f"models/training/{filename_to_save}_loss_history_epoch.pkl", 'wb+') as f:
                     pickle.dump((tuple(loss_hist), tuple(eval_hist)), f)
-                plt.plot(loss_hist)
-                plt.xlabel("epoch")
-                plt.title("training loss")
-                plt.savefig(fname=f"models/training/{filename_to_save}_training_loss.png")
-                plt.plot(eval_hist)
-                plt.xlabel("epoch")
-                plt.title("validation loss")
-                plt.savefig(fname=f"models/pair_frame/{filename_to_save}_validation_loss.png")
             torch.cuda.empty_cache()
         pbar.close()
 
         net.save("weights/", f"{filename_to_save}_trained")
         with open(f"{filename_to_save}_loss_history_epoch_{epoch}.pkl", 'wb+') as f:
             pickle.dump((tuple(loss_hist), tuple(eval_hist)), f)
-        plt.plot(loss_hist)
+        plt.plot(loss_hist, label="training")
         plt.xlabel("epoch")
-        plt.title("training loss")
-        plt.savefig(fname=f"models/pair_frame/{filename_to_save}training_loss.png")
-        plt.plot(eval_hist)
+        plt.plot(eval_hist, label="validation")
         plt.xlabel("epoch")
-        plt.title("validation loss")
-        plt.savefig(fname=f"models/pair_frame/{filename_to_save}validation_loss.png")
+        plt.title("Loss")
+        plt.legend()
+        plt.savefig(fname=f"models/pair_frame/{filename_to_save}_losses.png")
 
     return loss_hist, eval_hist
