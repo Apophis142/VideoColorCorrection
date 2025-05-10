@@ -148,10 +148,10 @@ def create_global_sequence_dataset(
         )
         x_dataset += x
         y_dataset += y
-        print("Processed folder %s: %d frame pairs. Used memory: %.2f Mb" %
+        print("Processed folder %s: %d frame sequences. Used memory: %.2f Mb" %
               (path_x, len(x), memory := ((x[0].element_size() + y[0].element_size()) * x[0].nelement() * len(x)) / 1024**2))
         total_memory += memory
-    print("Processed %d folders: %d frame pairs. Total memory: %.2f Mb" %
+    print("Processed %d folders: %d frame sequences. Total memory: %.2f Mb" %
           (len(os.listdir(low_light_path)), len(x_dataset), total_memory))
     return x_dataset, y_dataset
 

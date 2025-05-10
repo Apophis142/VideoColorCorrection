@@ -17,9 +17,9 @@ class SequenceModel(nn.Module):
         super().__init__()
         self.frame_sequence_length = frame_sequence_length
         self.net = nn.Sequential(
-            nn.Conv2d(in_channels=3*frame_sequence_length+1, out_channels=12*frame_sequence_length+1, kernel_size=5, padding=2),
+            nn.Conv2d(in_channels=3*(frame_sequence_length+1), out_channels=12*frame_sequence_length+3, kernel_size=5, padding=2),
             nn.ReLU(),
-            nn.Conv2d(in_channels=12*frame_sequence_length+1, out_channels=6*frame_sequence_length, kernel_size=7, padding=3),
+            nn.Conv2d(in_channels=12*frame_sequence_length+3, out_channels=6*frame_sequence_length, kernel_size=7, padding=3),
             nn.ReLU(),
             nn.Conv2d(in_channels=6*frame_sequence_length, out_channels=3*frame_sequence_length, kernel_size=9, padding=4),
             nn.Sigmoid()
