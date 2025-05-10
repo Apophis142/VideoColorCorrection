@@ -66,7 +66,7 @@ def train_nn(
 
             if epoch % epoch_frequency_save == 0 and epoch:
                 net.save("weights/training/", f"{filename_to_save}_epoch_{epoch}")
-                with open(f"models/training/{filename_to_save}_loss_history_epoch.pkl", 'wb+') as f:
+                with open(f"models/training/{filename_to_save}_loss_history.pkl", 'wb+') as f:
                     pickle.dump((tuple(loss_hist), tuple(eval_hist)), f)
             torch.cuda.empty_cache()
         pbar.close()

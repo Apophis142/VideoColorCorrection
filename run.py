@@ -3,9 +3,8 @@ import argparse
 import torch
 from torch.utils.data import TensorDataset, DataLoader, random_split
 
-from data.base_dataset import create_global_pair_dataset
+from data.base_dataset import create_global_pair_dataset, create_global_sequence_dataset
 from train_nn import train_nn
-from models.frame_pair_model import Net1
 
 parser = argparse.ArgumentParser(description="Training model to color correcting videos")
 parser.add_argument("-m", "--model", default="pairframe", type=str)
@@ -35,19 +34,36 @@ loss_functions = {
     "mse": torch.nn.MSELoss(),
     "mae": torch.nn.L1Loss(),
 }
-x, y = create_global_pair_dataset(
-    args.low_light_frames_path,
-    args.processed_low_light_frames_path,
-    args.frames_sequence_length,
-    args.resize_shape,
-    dtypes[args.tensor_dtype]
-)
+if args.model == "pairframe":
+    x, y = create_global_pair_dataset(
+        args.low_light_frames_path,
+        args.processed_low_light_frames_path,
+        args.frames_sequence_length,
+        args.resize_shape,
+        dtypes[args.tensor_dtype]
+    )
+
+    from models.PairFrameModel import FrameModel
+    net = FrameModel()
+elif args.model == "sequenceframe":
+    x, y = create_global_sequence_dataset(
+        args.low_light_frames_path,
+        args.processed_low_light_frames_path,
+        args.frames_sequence_length,
+        args.resize_shape,
+        dtypes[args.tensor_dtype]
+    )
+
+    from models.FrameSequenceModel import SequenceModel
+    net = SequenceModel(frame_sequence_length=args.frames_sequence_length)
+else:
+    raise ValueError
+
 
 dataset = TensorDataset(torch.stack(x), torch.stack(y))
 train_dataset, test_dataset = random_split(dataset, [(train_length := int(len(dataset) * .8)), len(dataset) - train_length])
 data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 test_data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False)
-net = Net1()
 if torch.cuda.is_available():
     net = net.cuda()
 net = net.to(dtypes[args.tensor_dtype])
