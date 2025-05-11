@@ -1,10 +1,11 @@
 import argparse
 
 import torch
-from torch.utils.data import TensorDataset, DataLoader, random_split
 
 from data.base_dataset import create_global_pair_dataset, create_global_sequence_dataset
 from train_nn import train_nn
+
+from random import sample
 
 parser = argparse.ArgumentParser(description="Training model to color correcting videos")
 parser.add_argument("-m", "--model", default="pairframe", type=str)
@@ -35,45 +36,39 @@ loss_functions = {
     "mae": torch.nn.L1Loss(),
 }
 if args.model == "pairframe":
-    x, y = create_global_pair_dataset(
-        args.low_light_frames_path,
-        args.processed_low_light_frames_path,
-        args.frames_sequence_length,
-        args.resize_shape,
-        dtypes[args.tensor_dtype]
-    )
-
     from models.PairFrameModel import FrameModel
+    from data.batch_loader import preload_all_pair_frames_paths as load_paths
+
     net = FrameModel()
 elif args.model == "sequenceframe":
-    x, y = create_global_sequence_dataset(
-        args.low_light_frames_path,
-        args.processed_low_light_frames_path,
-        args.frames_sequence_length,
-        args.resize_shape,
-        dtypes[args.tensor_dtype]
-    )
-
     from models.FrameSequenceModel import SequenceModel
+    from data.batch_loader import preload_all_sequence_frames_paths as load_paths
+
     net = SequenceModel(frame_sequence_length=args.frames_sequence_length)
 else:
     raise ValueError
 
 
-dataset = TensorDataset(torch.stack(x), torch.stack(y))
-train_dataset, test_dataset = random_split(dataset, [(train_length := int(len(dataset) * .8)), len(dataset) - train_length])
-data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-test_data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False)
+dataset_paths = load_paths(
+    args.low_light_frames_path,
+    args.processed_low_light_frames_path,
+    args.frames_sequence_length,
+)
+train_test_splitter = sample(dataset_paths, k=(ds_size := len(dataset_paths)))
+train_dataset, test_dataset = train_test_splitter[:int(.8*ds_size)], train_test_splitter[int(.8*ds_size):]
 if torch.cuda.is_available():
     net = net.cuda()
 net = net.to(dtypes[args.tensor_dtype])
 hist = train_nn(
     net,
-    data_loader,
-    test_data_loader,
+    train_dataset,
+    test_dataset,
     args.learning_rate,
     args.num_epochs,
+    args.batch_size,
     loss_function=loss_functions[args.loss_function],
     filename_to_save=args.filename_to_save,
-    epoch_frequency_save=args.epoch_save_frequency
+    epoch_frequency_save=args.epoch_save_frequency,
+    resize=args.resize_shape,
+    dtype=dtypes[args.tensor_dtype]
 )
