@@ -165,7 +165,7 @@ def training_thread(
 
             net.eval()
             eval_loss = 0.
-            lock.acqire()
+            lock.acquire()
             next_batch_paths = test_data_paths[:batch_size]
             flag_preloaded_next_batch = False
             lock.release()
