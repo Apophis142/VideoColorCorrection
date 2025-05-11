@@ -55,9 +55,11 @@ class FramePairModel(object):
             lambda t: t.transpose(2, 0) / 255
         ])
 
-    def __call__(self, x_c, x_i):
+    def __call__(self, x_c, x_i, is_preprocessed=False):
         """(x_c, x_i): a pair of frames"""
-        return self.net(torch.cat([self.process_center(x_c), x_i], dim=0))
+        if not is_preprocessed:
+            x_c = self.process_center(x_c)
+        return self.net(torch.cat([x_c, x_i], dim=0))
 
     def to(self, *args, **kwargs):
         self.net.to(*args, **kwargs)
