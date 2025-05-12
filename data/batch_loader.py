@@ -92,3 +92,31 @@ def preload_all_sequence_frames_paths(
                 skip = frame_sequence_length
 
     return res
+
+
+def xy_batch_loader(
+        batch_paths: list[str],
+        img_load: callable(str),
+):
+    x_batch, y_batch = [], []
+    for paths in batch_paths:
+        x_batch += [img_load(paths[0])]
+        y_batch += [img_load(paths[1])]
+
+    return torch.stack(x_batch), torch.stack(y_batch)
+
+
+def preload_all_frames_paths(
+        path_low: str,
+        path_normal: str,
+):
+    res = []
+    for (directory_x, _, files_x), (directory_y, _, files_y) in zip(os.walk(path_low), os.walk(path_normal)):
+        files_x = sorted(files_x, key=lambda s: int(s.replace(".jpg", "")))
+        for file in files_x:
+            if file in files_y:
+                res += [
+                    (directory_x + '/' + file, directory_y + '/' + file)
+                ]
+
+    return res

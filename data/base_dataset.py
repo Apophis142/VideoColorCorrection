@@ -156,10 +156,43 @@ def create_global_sequence_dataset(
     return x_dataset, y_dataset
 
 
-if __name__ == "__main__":
-    x, y = create_frames_pair_dataset("frames/low/0/", "frames/processed_enlightenGAN/0/", 5)
-    x = torch.stack(x)
-    y = torch.stack(y)
+def get_one_directory(
+        path,
+        frame_sequence_length,
+        resize: list[int]=None,
+        dtype: torch.dtype=None
+):
+    if resize is None:
+        resize = [600, 400]
+    if dtype is None:
+        dtype = torch.float
+    read_and_preprocess_img = transforms.Compose([
+        cv2.imread,
+        torch.tensor,
+        lambda t: t.transpose(2, 0),
+        transforms.Resize(resize),
+        lambda t: (t / 255).to(dtype)
+    ])
+    res = []
+    for path_to_directory, directories, files in list(os.walk(path)):
+        files = sorted(files, key=lambda s: int(s.replace(".jpg", "")))
 
-    print(x.shape, y.shape)
-    print(x.element_size() * x.nelement() / 1024**2, y.element_size() * y.nelement() / 1024**2)
+        skip = 0
+        for k, filename in enumerate(files):
+            center = int(filename.replace(".jpg", ""))
+            if skip:
+                skip -= 1
+                continue
+            if all(f"{j}.jpg" in files for j in range(center - frame_sequence_length // 2, center + frame_sequence_length // 2 + 1)):
+                center_frame = read_and_preprocess_img(path_to_directory + '/' + filename)
+                res += [
+                    (center_frame, read_and_preprocess_img(path_to_directory + '/' + files[j]))
+                    for j in range(k - frame_sequence_length // 2, k + frame_sequence_length // 2 + 1)
+                ]
+                skip = frame_sequence_length
+    return res
+
+
+if __name__ == "__main__":
+    x = get_one_directory("frames/low", 5, )
+    print(x)

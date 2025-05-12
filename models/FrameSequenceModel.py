@@ -41,11 +41,11 @@ class SequenceModel(nn.Module):
         self.eval()
 
 
-class SequencePairModel(object):
+class SequenceFrameModel(object):
     def __init__(self, frame_sequence_length, path_to_weights):
         self.frame_sequence_length = frame_sequence_length
         self.model = EnlightenOnnxModel()
-        self.net = SequenceModel()
+        self.net = SequenceModel(frame_sequence_length)
         if torch.cuda.is_available():
             self.net.load(path_to_weights)
         else:
@@ -65,12 +65,3 @@ class SequencePairModel(object):
 
     def to(self, *args, **kwargs):
         self.net.to(*args, **kwargs)
-
-
-if __name__ == "__main__":
-    net = SequenceModel()
-    net.eval()
-    x = torch.rand([960, 512, 6]).transpose(0, 2)
-    print(x.element_size() * x.nelement() / 1024**2)
-
-    print(net(x), net(x).shape)
