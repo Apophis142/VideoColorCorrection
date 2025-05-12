@@ -54,7 +54,7 @@ elif args.model == "sequenceframe":
     from models.FrameSequenceModel import SequenceFrameModel
     from data.batch_loader import preload_all_sequence_frames_paths, load_batch_sequence_frames
 
-    model = SequenceFrameModel(args.frame_sequence_length, args.weights_path)
+    model = SequenceFrameModel(args.frames_sequence_length, args.weights_path)
     dataset = preload_all_sequence_frames_paths(
         args.low_light_frames_path,
         args.normal_light_frames_path,
@@ -77,28 +77,41 @@ with tqdm.tqdm(total=len(dataset)) as pbar:
     metric_niqe = 0
     metric_ssim = 0
     metric_pnsr = 0
+    counter = 0
+
     for paths in dataset:
-        x, y = batch_loader([paths])
-        if args.model not in ("none", "target"):
-            processed_image = (model(x[0][:3], x[0][3:]).detach().cpu().numpy() * 255).astype(np.uint8)
-        x = (x[0][-3:, :, :].numpy() * 255).astype(np.uint8)
-        y = (y[0].numpy() * 255).astype(np.uint8)
-        if args.model == "none":
-            processed_image = x
+        if args.model in ("pairframe", "target", "none"):
+            x, y = batch_loader([paths])
+            xs = [x[0]]
+            ys = [y[0]]
+        elif args.model == "sequenceframe":
+            x, y = batch_loader([paths])
+            xs = [x[0][j*3:(j+1)*3, :, :] for j in range(1, args.frames_sequence_length+1)]
+            ys = [y[0][j*3:(j+1)*3, :, :] for j in range(args.frames_sequence_length)]
+        if args.model == "pairframe":
+            processed_images = [model(x[0][:3], x[0][3:])]
+        elif args.model == "sequenceframe":
+            frames_sequence = model(x[0])
+            processed_images = [frames_sequence[j*3:(j+1)*3] for j in range(args.frames_sequence_length)]
+        elif args.model == "none":
+            processed_images = xs
         elif args.model == "target":
-            processed_image = y
-        metric_niqe += niqe.calculate_niqe(processed_image, crop_border=0, input_order="CHW")
-        metric_ssim += structural_similarity(processed_image, y, channel_axis=0)
-        metric_pnsr += peak_signal_noise_ratio(y, processed_image, data_range=255)
+            processed_image = ys
+        for x, y, processed_image in zip(xs, ys, processed_images):
+            counter += 1
+            x = (x.numpy() * 255).astype(np.uint8)
+            y = (y.numpy() * 255).astype(np.uint8)
+            processed_image = (processed_image.detach().cpu().numpy() * 255).astype(np.uint8)
+            metric_niqe += niqe.calculate_niqe(processed_image, crop_border=0, input_order="CHW")
+            metric_ssim += structural_similarity(processed_image, y, channel_axis=0)
+            metric_pnsr += peak_signal_noise_ratio(y, processed_image, data_range=255)
+            counter += 1
 
         pbar.update()
 
 with open("metrics/niqe.txt", 'a') as file:
-    print("%s %d frame sequence: %.6f" % (args.key, args.frames_sequence_length, metric_niqe / len(dataset)),
-          file=file)
+    print("%s %d frame sequence: %.6f" % (args.key, args.frames_sequence_length, metric_niqe / counter), file=file)
 with open("metrics/ssim.txt", 'a') as file:
-    print("%s %d frame sequence: %.6f" % (args.key, args.frames_sequence_length, metric_ssim / len(dataset)),
-          file=file)
+    print("%s %d frame sequence: %.6f" % (args.key, args.frames_sequence_length, metric_ssim / counter), file=file)
 with open("metrics/pnsr.txt", 'a') as file:
-    print("%s %d frame sequence: %.6f" % (args.key, args.frames_sequence_length, metric_pnsr / len(dataset)),
-          file=file)
+    print("%s %d frame sequence: %.6f" % (args.key, args.frames_sequence_length, metric_pnsr / counter), file=file)

@@ -60,7 +60,7 @@ class SequenceFrameModel(object):
     def __call__(self, xs):
         """xs: sequence of frames"""
         return self.net(torch.cat([
-            self.process_center(xs[3*self.frame_sequence_length:3*(self.frame_sequence_length+1), :, :]), xs
+            self.process_center(xs[:3, :, :]), xs[3:]
         ], dim=0))
 
     def to(self, *args, **kwargs):
