@@ -2,9 +2,6 @@ import argparse
 
 import torch
 
-from data.base_dataset import create_global_pair_dataset, create_global_sequence_dataset
-from train_nn import train_nn
-
 from random import sample
 
 parser = argparse.ArgumentParser(description="Training model to color correcting videos")
@@ -21,7 +18,13 @@ parser.add_argument("-lr", "--learning_rate", default=.001, type=float)
 parser.add_argument("-loss", "--loss_function", default="mae", type=str)
 parser.add_argument("-resize", "--resize_shape", nargs=2, default=[600, 400], type=int)
 parser.add_argument("-dtype", "--tensor_dtype", default="float16", type=str)
+parser.add_argument("-multi", "--multi_threading_training", default="y", type=str)
 args = parser.parse_args()
+
+if args.multi_threading_training == "y":
+    from train_nn import train_nn
+elif args.multi_threading_training == "n":
+    from one_thread_training import train_nn
 
 print(args)
 dtypes = {
