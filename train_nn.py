@@ -23,6 +23,7 @@ flag_preloaded_next_batch = False
 trained_flag = False
 next_batch_paths: list = None
 preloaded_next_batch: torch.tensor
+global_break: bool = False
 
 
 def train_nn(
@@ -38,6 +39,8 @@ def train_nn(
         resize: list[int]=None,
         dtype: str=None,
 ):
+    global global_break
+
     optimizer = optim.Adam(net.parameters(), lr=learning_rate)
 
     if loss_function is None:
@@ -82,10 +85,18 @@ def train_nn(
     data_loading_thread.join()
     model_training_thread.join()
 
+    while True:
+        with open("emergency_stop.txt", 'r+') as f:
+            if f.readline() == "stop":
+                global_break = True
+                f.truncate()
+                break
+        time.sleep(10)
+
 
 def load_batch_thread(batch_loader, lock):
     global flag_preloaded_next_batch, next_batch_paths, preloaded_next_batch
-    global trained_flag
+    global trained_flag, global_break
     while True:
         if not flag_preloaded_next_batch and next_batch_paths is not None:
             lock.acquire()
@@ -94,7 +105,7 @@ def load_batch_thread(batch_loader, lock):
             flag_preloaded_next_batch = True
             next_batch_paths = None
             lock.release()
-        if trained_flag:
+        if trained_flag or global_break:
             break
 
 
@@ -199,6 +210,9 @@ def training_thread(
                 net.save("weights/training/", f"{filename_to_save}_epoch_{epoch}")
                 with open(f"models/training/{filename_to_save}_loss_history.pkl", 'wb+') as f:
                     pickle.dump((tuple(train_hist), tuple(eval_hist)), f)
+
+            if global_break:
+                break
 
 
     trained_flag = True
