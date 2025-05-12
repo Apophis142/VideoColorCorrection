@@ -96,7 +96,6 @@ def load_batch_thread(batch_loader, lock):
             lock.release()
         if trained_flag:
             break
-        time.sleep(.1)
 
 
 def training_thread(
