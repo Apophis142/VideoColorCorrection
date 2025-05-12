@@ -82,9 +82,6 @@ def train_nn(
 
     model_training_thread.start()
 
-    data_loading_thread.join()
-    model_training_thread.join()
-
     while True:
         with open("emergency_stop.txt", 'r+') as f:
             if f.readline() == "stop":
@@ -92,6 +89,9 @@ def train_nn(
                 f.truncate()
                 break
         time.sleep(10)
+    # data_loading_thread.join()
+    # model_training_thread.join()
+
 
 
 def load_batch_thread(batch_loader, lock):
@@ -121,7 +121,7 @@ def training_thread(
         filename_to_save: str,
         lock
 ):
-    global next_batch_paths, flag_preloaded_next_batch, trained_flag, preloaded_next_batch
+    global next_batch_paths, flag_preloaded_next_batch, trained_flag, preloaded_next_batch, global_break
 
     num_train_batches = (len(train_data_paths) + batch_size - 1) // batch_size
     num_test_batches = (len(test_data_paths) + batch_size - 1) // batch_size
