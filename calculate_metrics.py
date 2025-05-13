@@ -96,9 +96,8 @@ with tqdm.tqdm(total=len(dataset)) as pbar:
         elif args.model == "none":
             processed_images = xs
         elif args.model == "target":
-            processed_image = ys
+            processed_images = ys
         for x, y, processed_image in zip(xs, ys, processed_images):
-            counter += 1
             x = (x.numpy() * 255).astype(np.uint8)
             y = (y.numpy() * 255).astype(np.uint8)
             processed_image = (processed_image.detach().cpu().numpy() * 255).astype(np.uint8)

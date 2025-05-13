@@ -35,9 +35,9 @@ class SequenceModel(nn.Module):
 
     def load(self, path, device="cuda"):
         if device == "cpu":
-            self.load_state_dict(torch.load(path, weights_only=True, map_location=torch.device("cpu")))
+            self.load_state_dict(torch.load(path, map_location=torch.device("cpu")))
         else:
-            self.load_state_dict(torch.load(path, weights_only=True))
+            self.load_state_dict(torch.load(path))
         self.eval()
 
 
