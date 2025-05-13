@@ -112,7 +112,6 @@ def training_thread(
                                          eval_hist[-1] if eval_hist else torch.nan
                                      ))
                 pbar.update()
-                torch.cuda.empty_cache()
             train_hist += [running_loss / num_train_batches]
 
             net.eval()
@@ -134,7 +133,7 @@ def training_thread(
                 pbar.set_description("Epoch: %d (validation), Batch: %d, Loss: train %.4f, eval %.4f" %
                                      (epoch, batch_num, train_hist[-1], eval_loss / (batch_num + 1)))
                 pbar.update()
-                torch.cuda.empty_cache()
+            torch.cuda.empty_cache()
 
             eval_hist += [eval_loss / num_test_batches]
 
