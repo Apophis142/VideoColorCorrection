@@ -141,6 +141,7 @@ def training_thread(
             next_batch_paths = batches[:batch_size]
             flag_preloaded_next_batch = False
             lock.release()
+            torch.cuda.empty_cache()
             for batch_num in range(1, num_train_batches + 1):
                 optimizer.zero_grad()
 
@@ -169,7 +170,6 @@ def training_thread(
                                          eval_hist[-1] if eval_hist else torch.nan
                                      ))
                 pbar.update()
-                torch.cuda.empty_cache()
             train_hist += [running_loss / num_train_batches]
 
             net.eval()
@@ -197,7 +197,6 @@ def training_thread(
                 pbar.set_description("Epoch: %d (validation), Batch: %d, Loss: train %.4f, eval %.4f" %
                                      (epoch, batch_num, train_hist[-1], eval_loss / batch_num))
                 pbar.update()
-                torch.cuda.empty_cache()
 
             eval_hist += [eval_loss / num_test_batches]
 
