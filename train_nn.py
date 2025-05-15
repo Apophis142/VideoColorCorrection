@@ -33,6 +33,7 @@ def train_nn(
         learning_rate: float,
         num_epochs: int,
         batch_size: int,
+        device: torch.device,
         filename_to_save: str,
         loss_function: nn.Module=None,
         epoch_frequency_save: int=10,
@@ -77,6 +78,7 @@ def train_nn(
         epoch_frequency_save,
         batch_size,
         filename_to_save,
+        device,
         lock,
     ))
 
@@ -84,7 +86,7 @@ def train_nn(
 
     while True:
         with open("emergency_stop.txt", 'r+') as f:
-            if f.readline() == "stop":
+            if f.readline().strip() == "stop":
                 global_break = True
                 f.truncate()
                 break
@@ -119,6 +121,7 @@ def training_thread(
         epoch_frequency_save: int,
         batch_size: int,
         filename_to_save: str,
+        device,
         lock
 ):
     global next_batch_paths, flag_preloaded_next_batch, trained_flag, preloaded_next_batch, global_break
@@ -145,12 +148,8 @@ def training_thread(
                     continue
 
                 lock.acquire()
-                if torch.cuda.is_available():
-                    inputs = preloaded_next_batch[0].cuda()
-                    targets = preloaded_next_batch[1].cuda()
-                else:
-                    inputs = preloaded_next_batch[0]
-                    targets = preloaded_next_batch[1]
+                inputs = preloaded_next_batch[0].to(device)
+                targets = preloaded_next_batch[1].to(device)
 
                 next_batch_paths = batches[batch_size * batch_num:batch_size * (batch_num + 1)]
                 flag_preloaded_next_batch = False
@@ -185,12 +184,8 @@ def training_thread(
                     continue
 
                 lock.acquire()
-                if torch.cuda.is_available():
-                    inputs = preloaded_next_batch[0].cuda()
-                    targets = preloaded_next_batch[1].cuda()
-                else:
-                    inputs = preloaded_next_batch[0]
-                    targets = preloaded_next_batch[1]
+                inputs = preloaded_next_batch[0].to(device)
+                targets = preloaded_next_batch[1].to(device)
 
                 next_batch_paths = batches[batch_size * batch_num:batch_size * (batch_num + 1)]
                 flag_preloaded_next_batch = False

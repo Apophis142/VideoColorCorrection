@@ -12,6 +12,7 @@ parser.add_argument("frames_sequence_length", type=int)
 parser.add_argument("--normal_light_frames-path", default="", type=str)
 parser.add_argument("-batch", "--batch_size", default=8, type=int)
 parser.add_argument("-epoch", "--num_epochs", default=100, type=int)
+parser.add_argument("-gpu", "--gpu_id", default=0, type=int)
 parser.add_argument("-sf", "--epoch_save_frequency", default=10, type=int)
 parser.add_argument("-save", "--filename_to_save", required=True, type=str)
 parser.add_argument("-lr", "--learning_rate", default=.001, type=float)
@@ -59,16 +60,22 @@ dataset_paths = load_paths(
 )
 train_test_splitter = sample(dataset_paths, k=(ds_size := len(dataset_paths)))
 train_dataset, test_dataset = train_test_splitter[:int(.8*ds_size)], train_test_splitter[int(.8*ds_size):]
-if torch.cuda.is_available():
-    net = net.cuda()
+if args.gpu_id == -1:
+    device = torch.device("cpu")
+elif args.gpu_id >= 0:
+    device = torch.device("cuda:%d" % args.gpu_id)
+else:
+    raise Exception
 net = net.to(dtypes[args.tensor_dtype])
+net = net.to(device)
 hist = train_nn(
     net,
     train_dataset,
     test_dataset,
-    args.learning_rate,
-    args.num_epochs,
-    args.batch_size,
+    lr=args.learning_rate,
+    num_epochs=args.num_epochs,
+    batch_size=args.batch_size,
+    device=device,
     loss_function=loss_functions[args.loss_function],
     filename_to_save=args.filename_to_save,
     epoch_frequency_save=args.epoch_save_frequency,

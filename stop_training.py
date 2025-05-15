@@ -1,2 +1,2 @@
 with open("emergency_stop.txt", 'r+') as f:
-    print("break", file=f)
+    print("stop", file=f)

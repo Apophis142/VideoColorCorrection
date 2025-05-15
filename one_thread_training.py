@@ -24,6 +24,7 @@ def train_nn(
         learning_rate: float,
         num_epochs: int,
         batch_size: int,
+        device: torch.device,
         filename_to_save: str,
         loss_function: nn.Module=None,
         epoch_frequency_save: int=10,
@@ -61,6 +62,7 @@ def train_nn(
         batch_size,
         filename_to_save,
         lambda paths: batch_loader(paths, read_and_preprocess_img),
+        device,
     )
 
 
@@ -75,6 +77,7 @@ def training_thread(
         batch_size: int,
         filename_to_save: str,
         batch_loader,
+        device,
 ):
     num_train_batches = (len(train_data_paths) + batch_size - 1) // batch_size
     num_test_batches = (len(test_data_paths) + batch_size - 1) // batch_size
@@ -92,12 +95,8 @@ def training_thread(
                 preloaded_next_batch = batch_loader(next_batch_paths)
                 optimizer.zero_grad()
 
-                if torch.cuda.is_available():
-                    inputs = preloaded_next_batch[0].cuda()
-                    targets = preloaded_next_batch[1].cuda()
-                else:
-                    inputs = preloaded_next_batch[0]
-                    targets = preloaded_next_batch[1]
+                inputs = preloaded_next_batch[0].to(device)
+                targets = preloaded_next_batch[1].to(device)
 
                 outputs = net(inputs)
                 loss = loss_function(outputs, targets)
@@ -120,12 +119,8 @@ def training_thread(
             for batch_num in range(num_test_batches):
                 next_batch_paths = batches[batch_size * batch_num:batch_size * (batch_num + 1)]
                 preloaded_next_batch = batch_loader(next_batch_paths)
-                if torch.cuda.is_available():
-                    inputs = preloaded_next_batch[0].cuda()
-                    targets = preloaded_next_batch[1].cuda()
-                else:
-                    inputs = preloaded_next_batch[0]
-                    targets = preloaded_next_batch[1]
+                inputs = preloaded_next_batch[0].to(device)
+                targets = preloaded_next_batch[1].to(device)
 
                 outputs = net(inputs)
                 eval_loss += loss_function(outputs, targets).item()
