@@ -72,7 +72,7 @@ hist = train_nn(
     net,
     train_dataset,
     test_dataset,
-    lr=args.learning_rate,
+    learning_rate=args.learning_rate,
     num_epochs=args.num_epochs,
     batch_size=args.batch_size,
     device=device,
