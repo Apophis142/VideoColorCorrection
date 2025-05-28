@@ -9,6 +9,7 @@ import tqdm
 
 parser = argparse.ArgumentParser(description="Calculating metrics for models")
 parser.add_argument("-mod", "--model", default="pairframe", type=str)
+parser.add_argument("-c", "-center", "--center_model", default="EnlightenGAN", choices=["EnlightenGAN", "RetinexNet"])
 parser.add_argument("-w", "--weights_path", required=True, type=str)
 parser.add_argument("low_light_frames_path", type=str)
 parser.add_argument("normal_light_frames_path", type=str)
@@ -42,7 +43,7 @@ img_load = transforms.Compose([
 if args.model == "pairframe":
     from models.PairFrameModel import FramePairModel
     from data.batch_loader import preload_all_pair_frames_paths, load_batch_pair_frames
-    model = FramePairModel(args.weights_path)
+    model = FramePairModel(args.weights_path, args.center_model)
     dataset = preload_all_pair_frames_paths(
         args.low_light_frames_path,
         args.normal_light_frames_path,
@@ -54,7 +55,7 @@ elif args.model == "sequenceframe":
     from models.FrameSequenceModel import SequenceFrameModel
     from data.batch_loader import preload_all_sequence_frames_paths, load_batch_sequence_frames
 
-    model = SequenceFrameModel(args.frames_sequence_length, args.weights_path)
+    model = SequenceFrameModel(args.frames_sequence_length, args.weights_path, args.center_model)
     dataset = preload_all_sequence_frames_paths(
         args.low_light_frames_path,
         args.normal_light_frames_path,

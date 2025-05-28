@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import os
 from enlighten_inference import EnlightenOnnxModel
+from models.RetinexNet import RetinexNet
 from torchvision import transforms
 
 
@@ -41,19 +42,25 @@ class FrameModel(nn.Module):
 
 
 class FramePairModel(object):
-    def __init__(self, path_to_weights):
-        self.model = EnlightenOnnxModel()
+    def __init__(self, path_to_weights, center_model):
         self.net = FrameModel()
         if torch.cuda.is_available():
             self.net.load(path_to_weights)
         else:
             self.net.load(path_to_weights, "cpu")
-        self.process_center = transforms.Compose([
-            lambda t: t.transpose(2, 0).detach().cpu().numpy() * 255,
-            self.model.predict,
-            torch.tensor,
-            lambda t: t.transpose(2, 0) / 255
-        ])
+        if center_model == "EnlightenGAN":
+            self.model = EnlightenOnnxModel()
+            self.process_center = transforms.Compose([
+                lambda t: t.transpose(2, 0).detach().cpu().numpy() * 255,
+                self.model.predict,
+                torch.tensor,
+                lambda t: t.transpose(2, 0) / 255
+            ])
+        elif center_model == "RetinexNet":
+            self.model = RetinexNet()
+            self.predict_center = transforms.Compose([
+                lambda t: self.model.predict("models/weights/RetinexNet/", t.numpy()),
+            ])
 
     def __call__(self, x_c, x_i, is_preprocessed=False):
         """(x_c, x_i): a pair of frames"""
