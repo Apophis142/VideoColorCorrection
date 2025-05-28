@@ -97,11 +97,23 @@ class RelightNet(nn.Module):
 
 
 class RetinexNet(nn.Module):
-    def __init__(self):
+    def __init__(self, ckpt_dir=None):
         super(RetinexNet, self).__init__()
 
         self.DecomNet = DecomNet()
         self.RelightNet = RelightNet()
+
+        if ckpt_dir is not None:
+            self.train_phase = 'Decom'
+            load_model_status, _ = self.load(ckpt_dir)
+            if not load_model_status:
+                print("No pretrained model to restore!")
+                raise Exception
+            self.train_phase = 'Relight'
+            load_model_status, _ = self.load(ckpt_dir)
+            if not load_model_status:
+                print("No pretrained model to restore!")
+                raise Exception
 
     def forward(self, input_low):
         # Forward DecompNet
@@ -318,19 +330,7 @@ class RetinexNet(nn.Module):
 
         print("Finished training for phase %s." % train_phase)
 
-    def predict(self, ckpt_dir, test_low_img):
-
-        # Load the network with a pre-trained checkpoint
-        self.train_phase = 'Decom'
-        load_model_status, _ = self.load(ckpt_dir)
-        if not load_model_status:
-            print("No pretrained model to restore!")
-            raise Exception
-        self.train_phase = 'Relight'
-        load_model_status, _ = self.load(ckpt_dir)
-        if not load_model_status:
-            print("No pretrained model to restore!")
-            raise Exception
+    def predict(self, test_low_img):
 
         input_low_test = np.expand_dims(test_low_img, axis=0)
 

@@ -38,7 +38,7 @@ class SequenceModel(nn.Module):
         if device == "cpu":
             self.load_state_dict(torch.load(path, map_location=torch.device("cpu")))
         else:
-            self.load_state_dict(torch.load(path))
+            self.load_state_dict(torch.load(path), map_location=device)
         self.eval()
 
 
@@ -54,14 +54,16 @@ class SequenceFrameModel(object):
                 lambda t: t.transpose(2, 0) / 255
             ])
         elif center_model == "RetinexNet":
-            self.model = RetinexNet()
+            if torch.cuda.is_available():
+                self.model = RetinexNet("models/weights/RetinexNet/").to("cuda")
+            else:
+                self.model = RetinexNet("models/weights/RetinexNet/")
             self.process_center = transforms.Compose([
-                lambda t: self.model.predict("models/weights/RetinexNet/", t.numpy()),
+                lambda t: self.model.predict(t.numpy()),
             ])
         self.net = SequenceModel(frame_sequence_length)
         if torch.cuda.is_available():
             self.net.load(path_to_weights)
-            self.model = self.model.to("cuda")
         else:
             self.net.load(path_to_weights, "cpu")
 
