@@ -58,7 +58,7 @@ class FramePairModel(object):
             ])
         elif center_model == "RetinexNet":
             self.model = RetinexNet()
-            self.predict_center = transforms.Compose([
+            self.process_center = transforms.Compose([
                 lambda t: self.model.predict("models/weights/RetinexNet/", t.numpy()),
             ])
 
