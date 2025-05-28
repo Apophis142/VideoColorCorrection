@@ -37,7 +37,7 @@ class FrameModel(nn.Module):
         if device == "cpu":
             self.load_state_dict(torch.load(path, map_location=torch.device("cpu")))
         else:
-            self.load_state_dict(torch.load(path))
+            self.load_state_dict(torch.load(path, map_location=device))
         self.eval()
 
 
