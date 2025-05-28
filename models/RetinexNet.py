@@ -103,47 +103,18 @@ class RetinexNet(nn.Module):
         self.DecomNet = DecomNet()
         self.RelightNet = RelightNet()
 
-    def forward(self, input_low, input_high):
+    def forward(self, input_low):
         # Forward DecompNet
         input_low = Variable(torch.FloatTensor(torch.from_numpy(input_low))).cuda()
-        input_high = Variable(torch.FloatTensor(torch.from_numpy(input_high))).cuda()
         R_low, I_low = self.DecomNet(input_low)
-        R_high, I_high = self.DecomNet(input_high)
 
         # Forward RelightNet
         I_delta = self.RelightNet(I_low, R_low)
-
-        # Other variables
-        I_low_3 = torch.cat((I_low, I_low, I_low), dim=1)
-        I_high_3 = torch.cat((I_high, I_high, I_high), dim=1)
         I_delta_3 = torch.cat((I_delta, I_delta, I_delta), dim=1)
 
-        # Compute losses
-        self.recon_loss_low = F.l1_loss(R_low * I_low_3, input_low)
-        self.recon_loss_high = F.l1_loss(R_high * I_high_3, input_high)
-        self.recon_loss_mutal_low = F.l1_loss(R_high * I_low_3, input_low)
-        self.recon_loss_mutal_high = F.l1_loss(R_low * I_high_3, input_high)
-        self.equal_R_loss = F.l1_loss(R_low, R_high.detach())
-        self.relight_loss = F.l1_loss(R_low * I_delta_3, input_high)
+        output_S = R_low.detach().cpu() * I_delta_3.detach().cpu()
 
-        self.Ismooth_loss_low = self.smooth(I_low, R_low)
-        self.Ismooth_loss_high = self.smooth(I_high, R_high)
-        self.Ismooth_loss_delta = self.smooth(I_delta, R_low)
-
-        self.loss_Decom = self.recon_loss_low + \
-                          self.recon_loss_high + \
-                          0.001 * self.recon_loss_mutal_low + \
-                          0.001 * self.recon_loss_mutal_high + \
-                          0.1 * self.Ismooth_loss_low + \
-                          0.1 * self.Ismooth_loss_high + \
-                          0.01 * self.equal_R_loss
-        self.loss_Relight = self.relight_loss + \
-                            3 * self.Ismooth_loss_delta
-
-        self.output_R_low = R_low.detach().cpu()
-        self.output_I_low = I_low_3.detach().cpu()
-        self.output_I_delta = I_delta_3.detach().cpu()
-        self.output_S = R_low.detach().cpu() * I_delta_3.detach().cpu()
+        return output_S
 
     def gradient(self, input_tensor, direction):
         self.smooth_kernel_x = torch.FloatTensor([[0, 0], [-1, 1]]).view((1, 1, 2, 2)).cuda()
@@ -363,8 +334,7 @@ class RetinexNet(nn.Module):
 
         input_low_test = np.expand_dims(test_low_img, axis=0)
 
-        self.forward(input_low_test, input_low_test)
-        result = self.output_S
+        result = self(input_low_test)
         result = np.squeeze(result)
 
         return result
