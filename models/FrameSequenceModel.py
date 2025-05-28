@@ -61,6 +61,7 @@ class SequenceFrameModel(object):
         self.net = SequenceModel(frame_sequence_length)
         if torch.cuda.is_available():
             self.net.load(path_to_weights)
+            self.model = self.model.to("cuda")
         else:
             self.net.load(path_to_weights, "cpu")
 

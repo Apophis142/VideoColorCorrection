@@ -44,10 +44,6 @@ class FrameModel(nn.Module):
 class FramePairModel(object):
     def __init__(self, path_to_weights, center_model):
         self.net = FrameModel()
-        if torch.cuda.is_available():
-            self.net.load(path_to_weights)
-        else:
-            self.net.load(path_to_weights, "cpu")
         if center_model == "EnlightenGAN":
             self.model = EnlightenOnnxModel()
             self.process_center = transforms.Compose([
@@ -61,6 +57,11 @@ class FramePairModel(object):
             self.process_center = transforms.Compose([
                 lambda t: self.model.predict("models/weights/RetinexNet/", t.numpy()),
             ])
+        if torch.cuda.is_available():
+            self.model = self.model.to("cuda")
+            self.net.load(path_to_weights)
+        else:
+            self.net.load(path_to_weights, "cpu")
 
     def __call__(self, x_c, x_i, is_preprocessed=False):
         """(x_c, x_i): a pair of frames"""
