@@ -117,14 +117,14 @@ class RetinexNet(nn.Module):
 
     def forward(self, input_low):
         # Forward DecompNet
-        input_low = Variable(torch.FloatTensor(torch.from_numpy(input_low))).cuda()
+        # input_low = Variable(torch.FloatTensor(torch.from_numpy(input_low))).cuda()
         R_low, I_low = self.DecomNet(input_low)
 
         # Forward RelightNet
         I_delta = self.RelightNet(I_low, R_low)
         I_delta_3 = torch.cat((I_delta, I_delta, I_delta), dim=1)
 
-        output_S = R_low.detach().cpu() * I_delta_3.detach().cpu()
+        output_S = R_low.detach() * I_delta_3.detach()
 
         return output_S
 
@@ -206,7 +206,7 @@ class RetinexNet(nn.Module):
             if len(load_ckpts) > 0:
                 load_ckpt = load_ckpts[-1]
                 global_step = int(load_ckpt[:-4])
-                ckpt_dict = torch.load(load_dir + load_ckpt)
+                ckpt_dict = torch.load(load_dir + load_ckpt, map_location="cpu")
                 if self.train_phase == 'Decom':
                     self.DecomNet.load_state_dict(ckpt_dict)
                 elif self.train_phase == 'Relight':
@@ -332,9 +332,6 @@ class RetinexNet(nn.Module):
 
     def predict(self, test_low_img):
 
-        input_low_test = np.expand_dims(test_low_img, axis=0)
-
-        result = self(input_low_test)
-        result = np.squeeze(result)
+        result = self(test_low_img)
 
         return result

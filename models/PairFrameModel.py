@@ -42,43 +42,51 @@ class FrameModel(nn.Module):
 
 
 class FramePairModel(object):
-    def __init__(self, path_to_weights, center_model):
+    def __init__(self, path_to_weights, center_model, device="cpu"):
         self.net = FrameModel()
         if center_model == "EnlightenGAN":
-            self.model = EnlightenOnnxModel()
+            self.center_model = EnlightenOnnxModel()
             self.process_center = transforms.Compose([
                 lambda t: t.transpose(2, 0).detach().cpu().numpy() * 255,
-                self.model.predict,
+                self.center_model.predict,
                 torch.tensor,
                 lambda t: t.transpose(2, 0) / 255
             ])
         elif center_model == "RetinexNet":
-            if torch.cuda.is_available():
-                self.model = RetinexNet("models/weights/RetinexNet/").to("cuda")
-            else:
-                self.model = RetinexNet("models/weights/RetinexNet/")
+            self.center_model = RetinexNet("models/weights/RetinexNet/")
             self.process_center = transforms.Compose([
-                lambda t: self.model.predict(t.numpy()),
+                lambda t: self.center_model.predict,
             ])
-        if torch.cuda.is_available():
-            self.net.load(path_to_weights)
-        else:
-            self.net.load(path_to_weights, "cpu")
+        self.net.load(path_to_weights, "cpu")
+        self.device = device
 
-    def __call__(self, x_c, x_i, is_preprocessed=False):
-        """(x_c, x_i): a pair of frames"""
-        if not is_preprocessed:
-            x_c = self.process_center(x_c)
-        return self.net(torch.cat([x_c, x_i], dim=0))
+    # def __call__(self, x_c, x_i, is_preprocessed=False):
+    #     """(x_c, x_i): a pair of frames"""
+    #     if len(x_c.shape) == 3:
+    #         x_c = x_c.unsqueeze(0)
+    #         x_i = x_i.unsqueeze(0)
+    #     if not is_preprocessed:
+    #         x_c = self.process_center(x_c)
+    #     return self.net(torch.cat([x_c, x_i], dim=1)).squeeze()
+
+    def __call__(self, xs, xs_center):
+        model = self.center_model.to(self.device)
+        xs_center = xs_center.to(self.device)
+        processed_center = model.predict(xs_center).clip(0., 1.).cpu()
+        del model, xs_center
+
+        xs = xs.view(xs.shape[0], -1, 3, *xs.shape[-2:])
+        net = self.net.to(self.device)
+        res = net(torch.stack([
+            torch.cat([processed_center[i, :, :, :], xs[i, j, :, :, :]], dim=0)
+            for i in range(xs.shape[0])
+            for j in range(xs.shape[1])
+        ], dim=0).to(self.device)).detach()
+        del net
+
+        torch.cuda.empty_cache()
+
+        return res
 
     def to(self, *args, **kwargs):
         self.net.to(*args, **kwargs)
-
-
-if __name__ == "__main__":
-    net = FrameModel()
-    net.eval()
-    x = torch.rand([960, 512, 6]).transpose(0, 2)
-    print(x.element_size() * x.nelement() / 1024**2)
-
-    print(net(x), net(x).shape)

@@ -1,9 +1,26 @@
 import torch
 from torch import nn
 import os
-from enlighten_inference import EnlightenOnnxModel
+import numpy as np
+from onnxruntime import InferenceSession
 from models.RetinexNet import RetinexNet
 from torchvision import transforms
+
+
+class EnlightenOnnxModel:
+    def __init__(self):
+        self.graph = InferenceSession('./models/weights/EnlightenGAN/enlighten.onnx',
+                                      providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+
+    def __repr__(self):
+        return f'<EnlightenGAN OnnxModel {id(self)}>'
+
+    def predict(self, batch):
+        image_numpy, = self.graph.run(['output'], {'input': batch.numpy()})
+        image_numpy = (image_numpy + 1) / 2.0
+        image_numpy = np.clip(image_numpy, 0., 1.)
+        return torch.tensor(image_numpy)
+
 
 
 class SequenceModel(nn.Module):
@@ -43,35 +60,43 @@ class SequenceModel(nn.Module):
 
 
 class SequenceFrameModel(object):
-    def __init__(self, frame_sequence_length, path_to_weights, center_model):
+    def __init__(self, frame_sequence_length, path_to_weights, center_model, device):
         self.frame_sequence_length = frame_sequence_length
+        self.net = SequenceModel(frame_sequence_length)
         if center_model == "EnlightenGAN":
-            self.model = EnlightenOnnxModel()
+            self.center_model = EnlightenOnnxModel()
             self.process_center = transforms.Compose([
-                lambda t: t.transpose(2, 0).detach().cpu().numpy() * 255,
-                self.model.predict,
-                torch.tensor,
-                lambda t: t.transpose(2, 0) / 255
+                self.center_model.predict,
             ])
         elif center_model == "RetinexNet":
-            if torch.cuda.is_available():
-                self.model = RetinexNet("models/weights/RetinexNet/").to("cuda")
-            else:
-                self.model = RetinexNet("models/weights/RetinexNet/")
+            self.center_model = RetinexNet("models/weights/RetinexNet/")
             self.process_center = transforms.Compose([
-                lambda t: self.model.predict(t.numpy()),
+                self.center_model.predict,
             ])
-        self.net = SequenceModel(frame_sequence_length)
-        if torch.cuda.is_available():
-            self.net.load(path_to_weights)
-        else:
-            self.net.load(path_to_weights, "cpu")
+        self.net.load(path_to_weights, "cpu")
+        self.device = device
 
-    def __call__(self, xs):
-        """xs: sequence of frames"""
-        return self.net(torch.cat([
-            self.process_center(xs[:3, :, :]), xs[3:]
-        ], dim=0))
+    # def __call__(self, xs):
+    #     """xs: sequence of frames"""
+    #     if len(xs.shape) == 3:
+    #         xs = xs.unsqueeze(0)
+    #     return self.net(torch.cat([
+    #         self.process_center(xs[:, :3, :, :]), xs[:, 3:, :, :]
+    #     ], dim=1)).squeeze()
+
+    def __call__(self, xs, xs_center):
+        model = self.center_model.to(self.device)
+        xs_center = xs_center.to(self.device)
+        processed_center = model.predict(xs_center).clip(0., 1.).cpu()
+        del model, xs_center
+
+        net = self.net.to(self.device)
+        res = net(torch.cat([processed_center, xs], dim=1).to(self.device)).detach()
+        del net
+
+        torch.cuda.empty_cache()
+
+        return res
 
     def to(self, *args, **kwargs):
         self.net.to(*args, **kwargs)
