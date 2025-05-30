@@ -83,7 +83,7 @@ class FramePairModel(object):
             torch.cat([processed_center[i, :, :, :], xs[i, j, :, :, :]], dim=0)
             for i in range(xs.shape[0])
             for j in range(xs.shape[1])
-        ], dim=0).to(self.device)).detach()
+        ], dim=0).to(self.device)).detach().cpu()
         del net
 
         torch.cuda.empty_cache()

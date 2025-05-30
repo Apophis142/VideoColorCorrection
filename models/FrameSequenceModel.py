@@ -94,7 +94,7 @@ class SequenceFrameModel(object):
 
         net = self.net.to(self.device)
         xs = xs.to(self.dtype)
-        res = net(torch.cat([processed_center, xs], dim=1).to(self.device)).detach()
+        res = net(torch.cat([processed_center, xs], dim=1).to(self.device)).detach().cpu()
         del net
 
         torch.cuda.empty_cache()
