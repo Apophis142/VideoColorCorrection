@@ -138,7 +138,8 @@ filename = f"{args.model}x{args.frames_sequence_length}_{args.center_model}.pkl"
 with open(args.path_to_file + filename, 'wb+') as file:
     pickle.dump((timers, global_timer), file)
 with open(args.path_to_file + 'FPS.txt', 'a') as file:
-    print("%.4f" % (global_timer / frame_counter), file=file)
+    print("%s: %.4f" % (f"{args.model}x{args.frames_sequence_length}_{args.center_model}",
+                        global_timer / frame_counter), file=file)
 
 if args.save_results:
     print("Saving results into %s" % args.save_results + '.avi')
