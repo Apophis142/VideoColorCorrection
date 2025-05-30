@@ -1,26 +1,8 @@
 import torch
 from torch import nn
 import os
-import numpy as np
-from onnxruntime import InferenceSession
+from models.EnligthenGAN import EnlightenOnnxModel
 from models.RetinexNet import RetinexNet
-from torchvision import transforms
-
-
-class EnlightenOnnxModel:
-    def __init__(self):
-        self.graph = InferenceSession('./models/weights/EnlightenGAN/enlighten.onnx',
-                                      providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
-
-    def __repr__(self):
-        return f'<EnlightenGAN OnnxModel {id(self)}>'
-
-    def predict(self, batch):
-        image_numpy, = self.graph.run(['output'], {'input': batch.numpy()})
-        image_numpy = (image_numpy + 1) / 2.0
-        image_numpy = np.clip(image_numpy, 0., 1.)
-        return torch.tensor(image_numpy)
-
 
 
 class SequenceModel(nn.Module):
@@ -65,14 +47,25 @@ class SequenceFrameModel(object):
         self.net = SequenceModel(frame_sequence_length)
         if center_model == "EnlightenGAN":
             self.center_model = EnlightenOnnxModel()
-            self.process_center = transforms.Compose([
-                self.center_model.predict,
-            ])
+            def process_center(_self, _model, _tensor):
+                if len(_tensor.shape) == 3:
+                    _tensor = _tensor.unsqueeze(0)
+                _tensor = _tensor.to(torch.float).numpy()
+                res = []
+                for k in range(_tensor.shape[0]):
+                    res.append(_model.predict(_tensor[k:k+1, :, :, :]))
+                return torch.cat(res, dim=0)
+
+            self.process_center = process_center
         elif center_model == "RetinexNet":
             self.center_model = RetinexNet("models/weights/RetinexNet/").to(dtype)
-            self.process_center = transforms.Compose([
-                self.center_model.predict,
-            ])
+            def process_center(_self, _model, _tensor):
+                _tensor = _tensor.to(_self.dtype).to(_self.device)
+                _model = _model.to(_self.device)
+                return _model(_tensor).clip(0., 1.).cpu()
+
+            self.process_center = process_center
+
         self.net.load(path_to_weights, "cpu")
         self.net = self.net.to(dtype)
         self.dtype = dtype
@@ -87,10 +80,7 @@ class SequenceFrameModel(object):
     #     ], dim=1)).squeeze()
 
     def __call__(self, xs, xs_center):
-        model = self.center_model.to(self.device)
-        xs_center = xs_center.to(self.dtype).to(self.device)
-        processed_center = model.predict(xs_center).clip(0., 1.).cpu()
-        del model, xs_center
+        processed_center = self.process_center(self, self.center_model, xs_center)
 
         net = self.net.to(self.device)
         xs = xs.to(self.dtype)

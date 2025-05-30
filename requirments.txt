@@ -1,6 +1,5 @@
 torch
 torchvision
-git+https://github.com/arsenyinfo/EnlightenGAN-inference
 opencv-python
 tqdm
 matplotlib
