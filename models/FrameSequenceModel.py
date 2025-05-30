@@ -60,7 +60,7 @@ class SequenceModel(nn.Module):
 
 
 class SequenceFrameModel(object):
-    def __init__(self, frame_sequence_length, path_to_weights, center_model, device):
+    def __init__(self, frame_sequence_length, path_to_weights, center_model, device, dtype=torch.float32):
         self.frame_sequence_length = frame_sequence_length
         self.net = SequenceModel(frame_sequence_length)
         if center_model == "EnlightenGAN":
@@ -69,11 +69,13 @@ class SequenceFrameModel(object):
                 self.center_model.predict,
             ])
         elif center_model == "RetinexNet":
-            self.center_model = RetinexNet("models/weights/RetinexNet/")
+            self.center_model = RetinexNet("models/weights/RetinexNet/").to(dtype)
             self.process_center = transforms.Compose([
                 self.center_model.predict,
             ])
         self.net.load(path_to_weights, "cpu")
+        self.net = self.net.to(dtype)
+        self.dtype = dtype
         self.device = device
 
     # def __call__(self, xs):
@@ -86,11 +88,12 @@ class SequenceFrameModel(object):
 
     def __call__(self, xs, xs_center):
         model = self.center_model.to(self.device)
-        xs_center = xs_center.to(self.device)
+        xs_center = xs_center.to(self.dtype).to(self.device)
         processed_center = model.predict(xs_center).clip(0., 1.).cpu()
         del model, xs_center
 
         net = self.net.to(self.device)
+        xs = xs.to(self.dtype)
         res = net(torch.cat([processed_center, xs], dim=1).to(self.device)).detach()
         del net
 

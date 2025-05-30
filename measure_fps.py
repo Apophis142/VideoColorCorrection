@@ -26,7 +26,6 @@ parser.add_argument('-check-frames', '--number-of-frames-to-check', type=int, de
                     help="Number of frames to process (default: 600)")
 parser.add_argument('--path-to-file', type=str, default='./metrics/FPS/',
                     help="Path to file to collect results")
-parser.add_argument('-dtype', '--tensor-dtype', default="float32", type=str)
 parser.add_argument('-gpu','--gpu-id', type=int, default=0,
                     help="GPU's id to run the script on. Use -1 for CPU")
 parser.add_argument('-b', '--batch-size', type=int, default=1,
@@ -37,6 +36,9 @@ parser.add_argument('--verbose', action=argparse.BooleanOptionalAction,
                     help="Use this argument to see the progress during processing frames")
 parser.add_argument('-save', '--save-results', type=str, default="",
                     help="Path to save processed video. Don't use this parameter to not save the result (default: '')")
+parser.add_argument("-dtype", "--tensor-dtype", default="float32", type=str,
+                    help="Frames and model's data type")
+
 args = parser.parse_args()
 
 
@@ -50,6 +52,7 @@ dtypes = {
 }
 
 device = torch.device(f"cuda:{args.gpu_id}" if args.gpu_id != -1 else "cpu")
+dtype = dtypes[args.tensor_dtype]
 
 batch_preprocess = transforms.Compose([
     lambda batch_arr: torch.stack([torch.cat([
@@ -66,11 +69,11 @@ batch_center_preprocess = transforms.Compose([
 if args.model == "sequenceframe":
     from models.FrameSequenceModel import SequenceFrameModel
 
-    model = SequenceFrameModel(args.frames_sequence_length, args.weights, args.center_model, device)
+    model = SequenceFrameModel(args.frames_sequence_length, args.weights, args.center_model, device, dtype)
 elif args.model == "pairframe":
     from models.PairFrameModel import FramePairModel
 
-    model = FramePairModel(args.weights, args.center_model, device)
+    model = FramePairModel(args.weights, args.center_model, device, dtype)
 else:
     raise ValueError("Unknown model: %s" % args.model)
 

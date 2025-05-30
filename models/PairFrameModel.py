@@ -42,7 +42,7 @@ class FrameModel(nn.Module):
 
 
 class FramePairModel(object):
-    def __init__(self, path_to_weights, center_model, device="cpu"):
+    def __init__(self, path_to_weights, center_model, device="cpu", dtype=torch.float32):
         self.net = FrameModel()
         if center_model == "EnlightenGAN":
             self.center_model = EnlightenOnnxModel()
@@ -53,12 +53,14 @@ class FramePairModel(object):
                 lambda t: t.transpose(2, 0) / 255
             ])
         elif center_model == "RetinexNet":
-            self.center_model = RetinexNet("models/weights/RetinexNet/")
+            self.center_model = RetinexNet("models/weights/RetinexNet/").to(dtype)
             self.process_center = transforms.Compose([
                 lambda t: self.center_model.predict,
             ])
         self.net.load(path_to_weights, "cpu")
+        self.net = self.net.to(dtype)
         self.device = device
+        self.dtype = dtype
 
     # def __call__(self, x_c, x_i, is_preprocessed=False):
     #     """(x_c, x_i): a pair of frames"""
@@ -71,11 +73,11 @@ class FramePairModel(object):
 
     def __call__(self, xs, xs_center):
         model = self.center_model.to(self.device)
-        xs_center = xs_center.to(self.device)
+        xs_center = xs_center.to(self.dtype).to(self.device)
         processed_center = model.predict(xs_center).clip(0., 1.).cpu()
         del model, xs_center
 
-        xs = xs.view(xs.shape[0], -1, 3, *xs.shape[-2:])
+        xs = xs.view(xs.shape[0], -1, 3, *xs.shape[-2:]).to(self.dtype)
         net = self.net.to(self.device)
         res = net(torch.stack([
             torch.cat([processed_center[i, :, :, :], xs[i, j, :, :, :]], dim=0)
