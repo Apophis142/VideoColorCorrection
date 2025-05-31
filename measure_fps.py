@@ -5,6 +5,7 @@ from torchvision import transforms
 import numpy as np
 
 import time
+import threading
 
 
 parser = argparse.ArgumentParser(description="Measuring FPS")
@@ -51,6 +52,32 @@ dtypes = {
     "half": torch.float16,
 }
 
+
+def batch_processing_thread(lock_preprocessing, lock_processing):
+    global args, start_arr
+
+    global batch_preprocessed_flag, batch_processed_flag
+    global frame_counter
+    global tensor_batch, tensor_batch_center, processed_batch
+
+    while True:
+        if batch_preprocessed_flag:
+            lock_preprocessing.acquire()
+            inp = (tensor_batch, tensor_batch_center)
+            batch_preprocessed_flag = False
+            print(end='')
+            lock_preprocessing.release()
+
+            lock_processing.acquire()
+            start_arr.append(time.time())
+            processed_batch = model(*inp).view(-1, 3, *tensor_batch.shape[-2:])
+            batch_processed_flag = True
+            print(end='')
+            lock_processing.release()
+        if frame_counter >= args.number_of_frames_to_check:
+            break
+
+
 device = torch.device(f"cuda:{args.gpu_id}" if args.gpu_id != -1 else "cpu")
 dtype = dtypes[args.tensor_dtype]
 
@@ -91,40 +118,60 @@ vid.set(cv2.CAP_PROP_POS_FRAMES, args.number_of_frames_to_skip)
 
 out_frames = []
 
+batch_preprocessed_flag = False
+batch_processed_flag = False
+processed_batch: torch.tensor
+
+lock_pre = threading.Lock()
+lock_post = threading.Lock()
+
+processing_thread = threading.Thread(target=batch_processing_thread, args=(lock_pre, lock_post))
+processing_thread.start()
+
 global_start = time.time()
-start = time.time()
+start_arr, finish_arr = [], []
 timers = []
+
 while True:
-    ret, frame =vid.read()
-    if not ret:
-        break
+    if not batch_preprocessed_flag:
+        ret, frame = vid.read()
+        if not ret:
+            break
+        if batch_id == 0 and batch_frame_id == 0:
+            lock_pre.acquire()
+        if batch_id < args.batch_size:
+            batch[batch_id].append(frame)
+            batch_frame_id += 1
+            if batch_frame_id == args.frames_sequence_length // 2 + 1:
+                batch_center.append(frame)
+                # print(frame_counter, batch_id, batch_frame_id)
+            if batch_frame_id == args.frames_sequence_length:
+                batch_frame_id = 0
+                batch_id += 1
+        else:
+            tensor_batch = batch_preprocess(batch)
+            tensor_batch_center = batch_center_preprocess(batch_center)
+            batch_id = 0
+            batch = [[] for _ in range(args.batch_size)]
+            batch_center = []
+            batch_preprocessed_flag = True
+            print(end='')
+            lock_pre.release()
 
-    if batch_id < args.batch_size:
-        batch[batch_id].append(frame)
-        if batch_frame_id == args.frames_sequence_length // 2 + 1:
-            batch_center.append(frame)
-        batch_frame_id += 1
-        if batch_frame_id == args.frames_sequence_length:
-            batch_frame_id = 0
-            batch_id += 1
-    else:
-        start = time.time()
-        tensor_batch = batch_preprocess(batch)
-        tensor_batch_center = batch_center_preprocess(batch_center)
-        frame_counter += args.batch_size * args.frames_sequence_length
-
-        processed_batch = model(tensor_batch, tensor_batch_center).view(-1, 3, *tensor_batch.shape[-2:])
-        frames_array = np.clip(processed_batch.transpose(1, 3).numpy() * 255, 0, 255).astype(np.uint8)
+    if batch_processed_flag:
+        lock_post.acquire()
+        print(end='')
+        frames_array = np.clip(processed_batch.transpose(1, 3).numpy() * 255, 0., 255.).astype(np.uint8)
+        batch_processed_flag = False
+        lock_post.release()
         out_frames.extend([frames_array[i, :, :, :] for i in range(args.batch_size * args.frames_sequence_length)])
+        frame_counter += args.batch_size * args.frames_sequence_length
+        finish_arr.append(time.time())
         if args.verbose:
             print("Batch processed: %.4fs. Processed %d/%d frames" %
-                  (time.time() - start, frame_counter, args.number_of_frames_to_check))
+                  (finish_arr[-1] - start_arr[len(finish_arr) - 1], frame_counter, args.number_of_frames_to_check))
 
-        batch_id = 0
-        batch = [[] for _ in range(args.batch_size)]
-        batch_center = []
-        timers.append(time.time() - start)
-        start = time.time()
+        timers.append(finish_arr[-1] - start_arr[len(finish_arr) - 1])
 
     if frame_counter >= args.number_of_frames_to_check:
         break
