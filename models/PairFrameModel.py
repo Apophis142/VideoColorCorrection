@@ -44,8 +44,14 @@ class FrameModel(nn.Module):
 class FramePairModel(object):
     def __init__(self, path_to_weights, center_model, device="cpu", dtype=torch.float32):
         self.net = FrameModel()
+        self.net.load(path_to_weights, device)
+        self.net = self.net.to(dtype)
+        self.device = device
+        self.dtype = dtype
+
         if center_model == "EnlightenGAN":
             self.center_model = EnlightenOnnxModel()
+            self.net = self.net.to(self.device)
 
             def process_center(_self, _model, _tensor):
                 if len(_tensor.shape) == 3:
@@ -56,20 +62,30 @@ class FramePairModel(object):
                     res.append(_model.predict(_tensor[k:k + 1, :, :, :]))
                 return torch.cat(res, dim=0)
 
-            self.process_center = process_center
+            def process_all_frames(_self, _model, _tensor):
+                _tensor = _tensor.to(_self.dtype).to(_self.device)
+
+                return _model(_tensor).detach().cpu()
+
         elif center_model == "RetinexNet":
             self.center_model = RetinexNet("models/weights/RetinexNet/").to(dtype)
+
             def process_center(_self, _model, _tensor):
                 _tensor = _tensor.to(_self.dtype).to(_self.device)
                 _model = _model.to(_self.device)
                 return _model(_tensor).clip(0., 1.).cpu()
 
-            self.process_center = process_center
+            def process_all_frames(_self, _model, _tensor):
+                _model = _model.to(_self.device)
+                _tensor = _tensor.to(_self.dtype).to(_self.device)
 
-        self.net.load(path_to_weights, "cpu")
-        self.net = self.net.to(dtype)
-        self.device = device
-        self.dtype = dtype
+                return _model(_tensor).detach().cpu()
+
+        else:
+            raise ValueError("Unknown center model: %s" % center_model)
+
+        self.process_center = process_center
+        self.process_frames = process_all_frames
 
     # def __call__(self, x_c, x_i, is_preprocessed=False):
     #     """(x_c, x_i): a pair of frames"""
@@ -84,17 +100,12 @@ class FramePairModel(object):
         processed_center = self.process_center(self, self.center_model, xs_center)
 
         xs = xs.view(xs.shape[0], -1, 3, *xs.shape[-2:]).to(self.dtype)
-        net = self.net.to(self.device)
-        res = net(torch.stack([
+        res = self.process_frames(self, self.net, torch.stack([
             torch.cat([processed_center[i, :, :, :], xs[i, j, :, :, :]], dim=0)
             for i in range(xs.shape[0])
             for j in range(xs.shape[1])
-        ], dim=0).to(self.device)).detach().cpu()
-        del net
+        ], dim=0))
 
         torch.cuda.empty_cache()
 
         return res
-
-    def to(self, *args, **kwargs):
-        self.net.to(*args, **kwargs)

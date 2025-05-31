@@ -45,8 +45,14 @@ class SequenceFrameModel(object):
     def __init__(self, frame_sequence_length, path_to_weights, center_model, device, dtype=torch.float32):
         self.frame_sequence_length = frame_sequence_length
         self.net = SequenceModel(frame_sequence_length)
+        self.net.load(path_to_weights, "cpu")
+        self.net = self.net.to(dtype)
+        self.dtype = dtype
+        self.device = device
+
         if center_model == "EnlightenGAN":
             self.center_model = EnlightenOnnxModel()
+            self.net = self.net.to(self.device)
             def process_center(_self, _model, _tensor):
                 if len(_tensor.shape) == 3:
                     _tensor = _tensor.unsqueeze(0)
@@ -56,7 +62,11 @@ class SequenceFrameModel(object):
                     res.append(_model.predict(_tensor[k:k+1, :, :, :]))
                 return torch.cat(res, dim=0)
 
-            self.process_center = process_center
+            def process_all_frames(_self, _model, _tensor):
+                _tensor = _tensor.to(_self.dtype).to(_self.device)
+
+                return _model(_tensor).detach().cpu()
+
         elif center_model == "RetinexNet":
             self.center_model = RetinexNet("models/weights/RetinexNet/").to(dtype)
             def process_center(_self, _model, _tensor):
@@ -64,12 +74,18 @@ class SequenceFrameModel(object):
                 _model = _model.to(_self.device)
                 return _model(_tensor).clip(0., 1.).cpu()
 
-            self.process_center = process_center
+            def process_all_frames(_self, _model, _tensor):
+                _model = _model.to(_self.device)
+                _tensor = _tensor.to(_self.dtype).to(_self.device)
 
-        self.net.load(path_to_weights, "cpu")
-        self.net = self.net.to(dtype)
-        self.dtype = dtype
-        self.device = device
+                return _model(_tensor).detach().cpu()
+
+        else:
+            raise ValueError("Unknown center model: %s" % center_model)
+
+        self.process_center = process_center
+        self.process_frames = process_all_frames
+
 
     # def __call__(self, xs):
     #     """xs: sequence of frames"""
@@ -81,15 +97,7 @@ class SequenceFrameModel(object):
 
     def __call__(self, xs, xs_center):
         processed_center = self.process_center(self, self.center_model, xs_center)
-
-        net = self.net.to(self.device)
-        xs = xs.to(self.dtype)
-        res = net(torch.cat([processed_center, xs], dim=1).to(self.device)).detach().cpu()
-        del net
+        res = self.process_frames(self, self.net, torch.cat([processed_center, xs], dim=1))
 
         torch.cuda.empty_cache()
-
         return res
-
-    def to(self, *args, **kwargs):
-        self.net.to(*args, **kwargs)
